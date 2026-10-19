@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roulette Lab — European Wheel Simulator</title>
+<meta name="description" content="Interactive European roulette simulator: true single-zero wheel, click-to-bet layout, la partage option. Free, bilingual.">
+<link rel="stylesheet" href="styles.css">
+<script src="i18n.js"></script>
+<script src="roulette-wheel.js"></script>
+<script>
+Object.assign(I18N.en,{
+  sim_title:"European Wheel Simulator", sim_intro:"A true single-zero wheel with the correct number order. Pick a chip, click the layout, spin. La partage toggle included for even-money bets.",
+  chip:"Chip", spin:"SPIN", spinning:"Spinning…", clear:"Clear bets",
+  lapartage:"La partage (even-money bets lose half on zero)",
+  your_bets:"Your bets", no_bets:"No bets placed — click the layout.",
+  result:"Result", won:"won", lost:"lost", pushed_half:"half back (la partage)",
+  spins:"spins", pl:"P&L", hit_rate:"hit rate",
+  new_session:"New session",
+  dozen1:"1st 12", dozen2:"2nd 12", dozen3:"3rd 12",
+  col:"Column", red:"Red", black:"Black", odd:"Odd", even:"Even", low:"1–18", high:"19–36",
+});
+Object.assign(I18N.zh,{
+  sim_title:"歐式輪盤模擬器", sim_intro:"真正的單零輪盤，數字順序正確。選籌碼、點版面、轉動。均等注可開 la partage。",
+  chip:"籌碼", spin:"轉動", spinning:"轉動中…", clear:"清除注碼",
+  lapartage:"La partage（均等注開 0 只輸一半）",
+  your_bets:"你的注碼", no_bets:"還沒下注——點版面。",
+  result:"結果", won:"贏", lost:"輸", pushed_half:"退回一半（la partage）",
+  spins:"轉數", pl:"損益", hit_rate:"中獎率",
+  new_session:"新 session",
+  dozen1:"第一打", dozen2:"第二打", dozen3:"第三打",
+  col:"列", red:"紅", black:"黑", odd:"單", even:"雙", low:"1–18", high:"19–36",
+});
+const OUTSIDE = [
+  {id:'d1', pay:2, label:'dozen1', test:n=>n>=1&&n<=12},
+  {id:'d2', pay:2, label:'dozen2', test:n=>n>=13&&n<=24},
+  {id:'d3', pay:2, label:'dozen3', test:n=>n>=25&&n<=36},
+  {id:'c1', pay:2, label:'col', col:1, test:n=>n!==0&&n%3===1},
+  {id:'c2', pay:2, label:'col', col:2, test:n=>n!==0&&n%3===2},
+  {id:'c3', pay:2, label:'col', col:3, test:n=>n!==0&&n%3===0},
+  {id:'red', pay:1, even:true, label:'red', test:n=>isRed(n)},
+  {id:'black', pay:1, even:true, label:'black', test:n=>n!==0&&!isRed(n)},
+  {id:'odd', pay:1, even:true, label:'odd', test:n=>n!==0&&n%2===1},
+  {id:'even', pay:1, even:true, label:'even', test:n=>n!==0&&n%2===0},
+  {id:'low', pay:1, even:true, label:'low', test:n=>n>=1&&n<=18},
+  {id:'high', pay:1, even:true, label:'high', test:n=>n>=19&&n<=36},
+];
+let bets=[], bankroll=500, startBank=500, chip=5, spinning=false;
+let stats={spins:0, wins:0, wagered:0};
+
+function buildLayout(){
+  const g = document.getElementById('rgrid');
+  let h = `<div class="rnum zero" data-bet="n0" data-num="0">0</div>`;
+  // numbers 1-36 in layout order: rows of 3 (3,2,1 / 6,5,4 ...)
+  for(let row=0; row<12; row++){
+    for(let c=0;c<3;c++){
+      const n = row*3 + (3-c);
+      const cls = isRed(n)?'red':'black';
+      h += `<div class="rnum ${cls}" data-bet="n${n}" data-num="${n}">${n}</div>`;
+    }
+  }
+  // dozens row (start under the numbers, skipping the zero column)
+  h += `<div class="rout" data-bet="d1" style="grid-column:2/span 4">${t('dozen1')}</div><div class="rout" data-bet="d2">${t('dozen2')}</div><div class="rout" data-bet="d3">${t('dozen3')}</div>`;
+  // even-money row
+  h += `<div class="rout even" data-bet="low" style="grid-column:2/span 2">${t('low')}</div><div class="rout even" data-bet="even">${t('even')}</div>`;
+  h += `<div class="rout even" data-bet="red" style="background:#7a1f1a">${t('red')}</div><div class="rout even" data-bet="black" style="background:#111">${t('black')}</div>`;
+  h += `<div class="rout even" data-bet="odd">${t('odd')}</div><div class="rout even" data-bet="high">${t('high')}</div>`;
+  // columns row
+  h += `<div class="rout" data-bet="c1" style="grid-column:2/span 4">2:1 ${t('col')} 1</div><div class="rout" data-bet="c2">2:1 ${t('col')} 2</div><div class="rout" data-bet="c3">2:1 ${t('col')} 3</div>`;
+  g.innerHTML = h;
+  g.querySelectorAll('[data-bet]').forEach(el=>{
+    el.addEventListener('click', ()=>placeBet(el.dataset.bet, el));
+  });
+}
+function betTotal(id){ return bets.filter(b=>b.id===id).reduce((a,b)=>a+b.amt,0); }
+function placeBet(id, el){
+  if(spinning) return;
+  if(bankroll < chip){ log('⚠️ bankroll too low'); return; }
+  bankroll -= chip;
+  bets.push({id, amt:chip});
+  renderBets(); renderStats();
+}
+function clearBets(){
+  if(spinning) return;
+  bets.forEach(b=>bankroll+=b.amt);
+  bets=[]; renderBets(); renderStats();
+}
+function doSpin(){
+  if(spinning || !bets.length) return;
+  spinning = true;
+  const btn=document.getElementById('spinbtn'); btn.textContent=t('spinning'); btn.disabled=true;
+  const win = spinWheel();
+  // animate wheel
+  const svg=document.getElementById('wheel');
+  let rot=0; const target = 720 + Math.random()*360;
+  const t0=performance.now();
+  (function anim(now){
+    const p=Math.min(1,(now-t0)/2000), e=1-Math.pow(1-p,3);
+    drawWheel(svg, rot + target*e, p===1?win:-1);
+    if(p<1) requestAnimationFrame(anim);
+    else resolve(win);
+  })(t0);
+}
+function resolve(win){
+  const lp = document.getElementById('lapartage').checked;
+  let ret=0, wonAny=false;
+  const lines=[];
+  bets.forEach(b=>{
+    let r=0, note='';
+    if(b.id[0]==='n'){
+      const n=+b.id.slice(1);
+      if(n===win){ r=b.amt*36; wonAny=true; note=`${t('won')} ${b.amt*35}`; }
+    } else {
+      const o=OUTSIDE.find(x=>x.id===b.id);
+      if(win!==0 && o.test(win)){ r=b.amt*(o.pay+1); wonAny=true; note=`${t('won')} ${b.amt*o.pay}`; }
+      else if(win===0 && o.even && lp){ r=b.amt/2; note=t('pushed_half'); }
+    }
+    ret+=r;
+    if(r>0) lines.push(`${b.id}: +${r-b.amt}`);
+  });
+  bankroll+=ret;
+  stats.spins++; stats.wagered+=bets.reduce((a,b)=>a+b.amt,0);
+  if(wonAny) stats.wins++;
+  const pl = ret - bets.reduce((a,b)=>a+b.amt,0);
+  const color = win===0?'#1e7a46':(isRed(win)?'#e05252':'#ccc');
+  log(`<b style="color:${color}">${win}</b> ${pl>=0?'<span class="pos">+'+pl+'</span>':'<span class="neg">'+pl+'</span>'} ${lines.join(' · ')}`);
+  // highlight winning number on layout
+  document.querySelectorAll('.rnum').forEach(el=>el.classList.remove('winner'));
+  const wEl=document.querySelector(`[data-num="${win}"]`);
+  if(wEl) wEl.classList.add('winner');
+  bets=[];
+  renderBets(); renderStats();
+  spinning=false;
+  const btn=document.getElementById('spinbtn'); btn.textContent=t('spin'); btn.disabled=false;
+}
+function renderBets(){
+  document.querySelectorAll('#rgrid .chip').forEach(c=>c.remove());
+  const totals={};
+  bets.forEach(b=>totals[b.id]=(totals[b.id]||0)+b.amt);
+  Object.keys(totals).forEach(id=>{
+    const el=document.querySelector(`[data-bet="${id}"]`);
+    if(el){ const s=document.createElement('span'); s.className='chip'; s.textContent='$'+totals[id]; el.appendChild(s); }
+  });
+  const bl=document.getElementById('betlist');
+  if(!bets.length) bl.innerHTML=`<p class="muted">${t('no_bets')}</p>`;
+  else bl.innerHTML='<table class="data"><tr><th>Bet</th><th class="num">$</th></tr>'+
+    Object.keys(totals).map(id=>`<tr><td>${id}</td><td class="num">${totals[id]}</td></tr>`).join('')+'</table>';
+}
+function renderStats(){
+  const pl=bankroll-startBank;
+  document.getElementById('bank').innerHTML=
+    `<div class="stat"><div class="v">$${bankroll.toFixed(0)}</div><div class="l">${t('bankroll')}</div></div>
+     <div class="stat"><div class="v ${pl>=0?'pos':'neg'}">${pl>=0?'+':''}$${pl.toFixed(0)}</div><div class="l">${t('pl')}</div></div>
+     <div class="stat"><div class="v">${stats.spins}</div><div class="l">${t('spins')}</div></div>
+     <div class="stat"><div class="v">${stats.spins?(stats.wins/stats.spins*100).toFixed(0)+'%':'–'}</div><div class="l">${t('hit_rate')}</div></div>`;
+}
+function newSession(){
+  bankroll=startBank=+document.getElementById('s_bank').value||500;
+  bets=[]; stats={spins:0,wins:0,wagered:0};
+  document.getElementById('log').innerHTML='';
+  document.querySelectorAll('.rnum').forEach(el=>el.classList.remove('winner'));
+  drawWheel(document.getElementById('wheel'), 0, -1);
+  renderBets(); renderStats();
+}
+function log(m){ const el=document.getElementById('log'); el.innerHTML='<div>'+m+'</div>'+el.innerHTML; }
+function setChip(v, el){
+  chip=v;
+  document.querySelectorAll('.pchip').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+}
+function onLangChange(){ buildLayout(); renderBets(); renderStats(); }
+</script>
+</head>
+<body>
+<script>document.write(navHTML('simulator.html'));</script>
+<div class="wrap"><section class="block">
+<h1 style="color:var(--gold)" data-i18n="sim_title">European Wheel Simulator</h1>
+<p data-i18n="sim_intro"></p>
+<div class="grid cols2">
+<div>
+  <div class="card center">
+    <div class="wheel-wrap"><svg class="wheel" id="wheel" viewBox="0 0 200 200"></svg></div>
+    <div class="mt"><button class="btn" id="spinbtn" style="font-size:1.3rem;padding:14px 44px" onclick="doSpin()" data-i18n="spin">SPIN</button></div>
+    <div class="checkrow" style="justify-content:center"><input type="checkbox" id="lapartage"><label for="lapartage" data-i18n="lapartage"></label></div>
+  </div>
+  <div class="card"><h3 style="color:var(--gold);margin-top:0">💰 <span data-i18n="bankroll">Bankroll</span></h3>
+    <div class="rowflex"><label class="f"><span data-i18n="bankroll">Bankroll</span><br><input type="number" id="s_bank" value="500" style="width:110px"></label>
+    <button class="btn small" onclick="newSession()" data-i18n="new_session">New session</button></div>
+    <div class="stat-grid" id="bank" style="margin-top:14px"></div>
+  </div>
+</div>
+<div>
+  <div class="card"><h3 style="color:var(--gold);margin-top:0">🎯 <span data-i18n="chip">Chip</span></h3>
+    <div class="chiprack" id="chiprack">
+      <div class="pchip" style="background:#2e7d32" onclick="setChip(1,this)">$1</div>
+      <div class="pchip sel" style="background:#b03a2e" onclick="setChip(5,this)">$5</div>
+      <div class="pchip" style="background:#1a1a1a" onclick="setChip(25,this)">$25</div>
+      <div class="pchip" style="background:#5d3a9e" onclick="setChip(100,this)">$100</div>
+    </div>
+    <div class="rlayout"><div class="rgrid" id="rgrid"></div></div>
+    <div class="rowflex"><button class="btn small danger" onclick="clearBets()" data-i18n="clear">Clear bets</button></div>
+  </div>
+  <div class="card"><h3 style="color:var(--gold);margin-top:0">🎯 <span data-i18n="your_bets">Your bets</span></h3><div id="betlist"></div></div>
+  <div class="card"><h3 style="color:var(--gold);margin-top:0">📝 <span data-i18n="result">Result</span></h3><div class="log" id="log"></div></div>
+</div>
+</div>
+<script>document.write(disclosure());</script>
+</section></div>
+<script>document.write(adSlot());</script>
+<script>document.write(footerHTML());</script>
+<script>buildLayout();drawWheel(document.getElementById('wheel'),0,-1);renderBets();renderStats();</script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>About — Roulette Lab</title>
+<link rel="stylesheet" href="styles.css">
+<script src="i18n.js"></script>
+</head>
+<body>
+<script>document.write(navHTML('about.html'));</script>
+<div class="wrap">
+  <section class="block">
+    <h2 class="sec">About Roulette Lab</h2>
+    <div id="aboutBody"></div>
+    <script>document.write(disclosure());</script>
+  </section>
+</div>
+<script>document.write(adSlot());</script>
+<script>document.write(footerHTML());</script>
+<script>
+const ABOUT = {
+en:`<div class="card"><p class="big">I play roulette the way a mechanic looks at an engine: I want to see every part and know exactly what it costs. This site is the teardown.</p>
+<p>Roulette is the most honestly priced game in the casino. The edge is 2.70% on a European wheel — printed, published, and identical on every bet. No fine print, no "but the bonus bet…". One number, whole game. I respect that, and I built the simulator I wanted: a true single-zero wheel with the real number order, so what you practice here matches what you see in a real casino.</p>
+<p><b>What this site is:</b> a free educational simulator. Real wheel math (37 pockets, correct sequence), every bet with verified payouts, la partage explained properly, and calculators that price your actual game per hour.</p>
+<p><b>What this site is not:</b> a way to beat roulette. There isn't one. Martingale doesn't do it, Fibonacci doesn't do it, and the dealer isn't "due" for anything. If anyone tells you otherwise, they're selling something.</p>
+<p>My one strong opinion: never play American roulette when a European wheel exists in the building. Same game, double the price. That's not strategy, that's shopping — and now you know.</p></div>`,
+zh:`<div class="card"><p class="big">我看輪盤就像技師看引擎：想看清每個零件，知道每個值多少錢。這個網站就是拆解報告。</p>
+<p>輪盤是賭場裡定價最誠實的遊戲。歐式輪盤優勢 2.70%——公開、印出來、每種注都一樣。沒有小字、沒有「但是紅利注…」。一個數字，整個遊戲。我尊重這點，也做了我想要的模擬器：真正的單零輪盤、真實數字順序，你在這裡練的跟真實賭場看到的一樣。</p>
+<p><b>本站是：</b>免費教育模擬器。真實輪盤數學（37 格、正確順序）、每種注的驗證賠付、好好講清楚的 la partage，以及算出你實際每小時花費的計算機。</p>
+<p><b>本站不是：</b>戰勝輪盤的方法。這東西不存在。Martingale 不行、費波納契不行、荷官也不「該」開什麼。跟你說可以的，都是在賣東西。</p>
+<p>我唯一強烈的意見：同一棟樓有歐式輪盤，就永遠別碰美式。同樣的遊戲，雙倍價格。這不是策略，是比價——現在你知道了。</p></div>`};
+function renderDynamic(){ document.getElementById('aboutBody').innerHTML = ABOUT[LANG]; }
+</script>
+</body>
+</html>

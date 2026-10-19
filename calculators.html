@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roulette Lab — Calculators</title>
+<meta name="description" content="Roulette payout calculator and cost-of-an-hour estimator. Verified European wheel math, bilingual.">
+<link rel="stylesheet" href="styles.css">
+<script src="i18n.js"></script>
+<script>
+Object.assign(I18N.en,{
+  calc_title:"Calculators",
+  pay_h:"Payout Calculator",
+  pay_d:"Pick a bet and an amount — see the payout, the true odds, and the edge, instantly.",
+  bet:"Bet", amount:"Amount $", calc:"Calculate",
+  pays:"Pays", true_odds:"True odds", edge:"House edge",
+  prob_win:"Win probability",
+  hour_h:"Cost of an Hour",
+  hour_d:"How much does your game cost per hour? Enter your bets and spins per hour — the calculator uses the true 2.70% (or 1.35% with la partage).",
+  spins_hr:"Spins / hour", add_bet:"Add bet", hour_run:"Estimate",
+  bet_type:"Bet", per_hour:"Spins / hour",
+  hour_cost:"Expected hourly cost",
+  hour_note:"European wheel: 2.70% on all bets, 1.35% on even-money bets with la partage. ~50 spins/hour at a full table.",
+  lapartage_short:"la partage",
+});
+Object.assign(I18N.zh,{
+  calc_title:"計算機",
+  pay_h:"賠付計算機",
+  pay_d:"選注種和金額——即時看到賠付、真實賠率與優勢。",
+  bet:"注種", amount:"金額 $", calc:"計算",
+  pays:"賠付", true_odds:"真實賠率", edge:"莊家優勢",
+  prob_win:"中獎機率",
+  hour_h:"每小時代價",
+  hour_d:"你的玩法每小時花多少？輸入注碼與每小時轉數——計算機用真實的 2.70%（la partage 下 1.35%）。",
+  spins_hr:"每小時轉數", add_bet:"新增注碼", hour_run:"估算",
+  bet_type:"注種", per_hour:"每小時轉數",
+  hour_cost:"預期每小時花費",
+  hour_note:"歐式輪盤：所有注 2.70%，la partage 均等注 1.35%。滿桌約每小時 50 轉。",
+  lapartage_short:"la partage",
+});
+const BETS = {
+  straight:{pay:35, nums:1, en:"Straight up", zh:"單號"},
+  split:{pay:17, nums:2, en:"Split", zh:"分注"},
+  street:{pay:11, nums:3, en:"Street", zh:"街注"},
+  corner:{pay:8, nums:4, en:"Corner", zh:"角注"},
+  sixline:{pay:5, nums:6, en:"Six line", zh:"六線注"},
+  dozen:{pay:2, nums:12, en:"Dozen / Column", zh:"打數 / 列注"},
+  evenmoney:{pay:1, nums:18, en:"Even-money (red/black…)", zh:"均等注（紅黑…）"},
+  evenmoney_lp:{pay:1, nums:18, lp:true, en:"Even-money + la partage", zh:"均等注 + la partage"},
+};
+function betName(k){ const b=BETS[k]; return (LANG==='zh'?b.zh:b.en); }
+function runPayout(){
+  const k=document.getElementById('p_bet').value, amt=+document.getElementById('p_amt').value||10;
+  const b=BETS[k];
+  const edge = b.lp ? 0.0135 : 1/37;
+  const prob = b.nums/37;
+  document.getElementById('p_out').innerHTML=`
+    <div class="stat-grid">
+      <div class="stat"><div class="v">$${(amt*b.pay).toFixed(0)}</div><div class="l">${t('pays')} (${b.pay}:1)</div></div>
+      <div class="stat"><div class="v">${(prob*100).toFixed(2)}%</div><div class="l">${t('prob_win')}</div></div>
+      <div class="stat"><div class="v neg">${(edge*100).toFixed(2)}%</div><div class="l">${t('edge')}</div></div>
+      <div class="stat"><div class="v neg">$${(amt*edge).toFixed(2)}</div><div class="l">${t('hour_cost')} / spin</div></div>
+    </div>
+    <div class="callout">${LANG==='zh'
+      ? `$${amt} 押${betName(k)}：中了拿 $${(amt*b.pay).toFixed(0)} 利潤（本金退回），機率 ${(prob*100).toFixed(2)}%，每轉平均成本 $${(amt*edge).toFixed(2)}。`
+      : `$${amt} on ${betName(k)}: win $${(amt*b.pay).toFixed(0)} profit (stake back), ${(prob*100).toFixed(2)}% chance, average cost $${(amt*edge).toFixed(2)} per spin.`}</div>`;
+}
+let hourRows=0;
+function addHourRow(){
+  hourRows++;
+  const div=document.createElement('div');
+  div.className='rowflex'; div.id='hr'+hourRows;
+  div.innerHTML=`
+    <label class="f">${t('bet_type')}<br><select id="ht${hourRows}">
+      ${Object.keys(BETS).map(k=>`<option value="${k}">${betName(k)}</option>`).join('')}
+    </select></label>
+    <label class="f">${t('amount')}<br><input type="number" id="ha${hourRows}" value="10" style="width:90px"></label>
+    <button class="btn small danger" onclick="document.getElementById('hr${hourRows}').remove()">✕</button>`;
+  document.getElementById('hour_rows').appendChild(div);
+}
+function runHour(){
+  const spins=+document.getElementById('h_spins').value||50;
+  let total=0, detail='';
+  for(const row of document.getElementById('hour_rows').children){
+    const sel=row.querySelector('select'), amt=row.querySelector('input[type=number]');
+    if(!sel||!amt) continue;
+    const b=BETS[sel.value], a=+amt.value||0;
+    const edge=b.lp?0.0135:1/37;
+    const cost=a*edge*spins;
+    total+=cost;
+    detail+=`<div class="kv"><span>${betName(sel.value)} $${a}</span><b class="neg">-$${cost.toFixed(2)}/hr</b></div>`;
+  }
+  document.getElementById('h_out').innerHTML=`
+    <div class="stat"><div class="v neg">$${total.toFixed(2)}</div><div class="l">${t('hour_cost')}</div></div>
+    <div class="mt">${detail}</div>
+    <p class="muted">${t('hour_note')}</p>`;
+}
+function onLangChange(){
+  const s=document.getElementById('p_bet');
+  if(s) s.innerHTML=Object.keys(BETS).map(k=>`<option value="${k}">${betName(k)} (${BETS[k].pay}:1)</option>`).join('');
+}
+</script>
+</head>
+<body>
+<script>document.write(navHTML('calculators.html'));</script>
+<div class="wrap"><section class="block">
+<h1 style="color:var(--gold)" data-i18n="calc_title">Calculators</h1>
+<div class="card">
+  <h2 class="sec" data-i18n="pay_h">Payout Calculator</h2>
+  <p data-i18n="pay_d"></p>
+  <div class="rowflex">
+    <label class="f"><span data-i18n="bet">Bet</span><br><select id="p_bet"></select></label>
+    <label class="f"><span data-i18n="amount">Amount $</span><br><input type="number" id="p_amt" value="10" style="width:110px"></label>
+    <button class="btn" onclick="runPayout()" data-i18n="calc">Calculate</button>
+  </div>
+  <div id="p_out" class="mt"></div>
+</div>
+<div class="card">
+  <h2 class="sec" data-i18n="hour_h">Cost of an Hour</h2>
+  <p data-i18n="hour_d"></p>
+  <div class="rowflex"><label class="f"><span data-i18n="spins_hr">Spins / hour</span><br><input type="number" id="h_spins" value="50" style="width:110px"></label>
+  <button class="btn small ghost" onclick="addHourRow()" data-i18n="add_bet">Add bet</button>
+  <button class="btn small" onclick="runHour()" data-i18n="hour_run">Estimate</button></div>
+  <div id="hour_rows" class="mt"></div>
+  <div id="h_out" class="mt"></div>
+</div>
+<script>document.write(disclosure());</script>
+</section></div>
+<script>document.write(adSlot());</script>
+<script>document.write(footerHTML());</script>
+<script>onLangChange();addHourRow();addHourRow();</script>
+</body>
+</html>

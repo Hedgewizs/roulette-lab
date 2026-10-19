@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roulette Lab — Gear & Merch</title>
+<meta name="description" content="Honest gambling-math books and roulette practice gear I actually recommend. Plus Roulette Lab merch (coming soon).">
+<link rel="stylesheet" href="styles.css">
+<script src="i18n.js"></script>
+<script>
+/* ---------- Amazon Associates ---------- */
+const AMAZON_TAG = "hedwiz00-20";
+const amz = q => "https://www.amazon.com/s?k="+encodeURIComponent(q)+"&tag="+AMAZON_TAG;
+const GEAR = [
+  {icon:"📖", q:"Fortune's Formula William Poundstone",
+   name:{en:"Fortune's Formula — William Poundstone", zh:"《Fortune's Formula》— William Poundstone"},
+   d:{en:"The story of the Kelly criterion — the math behind bet sizing and bankroll management. Roulette is the perfect case study in why bet sizing can't beat a negative edge, and this book explains why better than anything else.",
+      zh:"凱利公式的故事——注碼與資金管理的數學。輪盤是「注碼贏不了負期望值」的完美案例，這本書講得比什麼都透徹。"}},
+  {icon:"📖", q:"Theory of Gambling and Statistical Logic Epstein",
+   name:{en:"The Theory of Gambling and Statistical Logic — Richard Epstein", zh:"《賭博理論與統計邏輯》— Richard Epstein"},
+   d:{en:"The textbook. Probability theory built entirely around casino games, roulette included. Dense, but it's the real foundation under everything on this site.",
+      zh:"教科書級。以賭場遊戲（含輪盤）為骨架的機率論。硬，但本站所有內容的真正地基都在這裡。"}},
+  {icon:"🎡", q:"roulette wheel 18 inch casino grade",
+   name:{en:"Casino-grade roulette wheel (18\")", zh:"賭場級輪盤（18 吋）"},
+   d:{en:"A real balanced wheel for home practice. Spin it while you study the layout — feeling the pace of a real game teaches bankroll discipline no app can.",
+      zh:"在家練習用的真平衡輪盤。邊學版面邊轉——真實的遊戲節奏教會你的資金紀律，是 app 教不來的。"}},
+  {icon:"🟢", q:"european roulette table felt layout single zero",
+   name:{en:"European roulette felt layout", zh:"歐式輪盤桌布"},
+   d:{en:"Single-zero layout felt. Learn where every bet lives before your first live table — the simulator pairs perfectly with one.",
+      zh:"單零版面桌布。上真桌之前先搞懂每個注的位置——配本站模擬器效果加倍。"}},
+];
+/* ---------- Printify merch (designs come later) ----------
+   Fill MERCH_PRODUCTS when designs are ready. Format per item:
+   {name:{en:"Roulette Lab Tee", zh:"Roulette Lab T 恤"}, price:"$24.99",
+    img:"https://…/design.jpg", url:"https://hedgewiz.printify.me/product/…"} */
+const MERCH_PRODUCTS = [];
+
+Object.assign(I18N.en,{
+  gear_title:"Gear & Merch",
+  gear_intro:"The books and practice gear I actually recommend, and Roulette Lab merch when it lands. No casino or sportsbook affiliates here — licensing risk I don't need.",
+  gear_h:"Books & practice gear",
+  gear_d:"Hand-picked. Every item below is something I'd tell a friend to buy — honest math, real practice tools.",
+  gear_cta:"Check price on Amazon",
+  amz_disc:"As an Amazon Associate, Roulette Lab earns from qualifying purchases. Prices change — the link always shows the live price.",
+  merch_h:"Roulette Lab merch",
+  merch_d:"Branded tees and wheel swag, printed on demand. Designs are in the works — check back soon.",
+  merch_soon:"Designs coming soon",
+  merch_notify:"Want first dibs? The announcement will go out with the next site update.",
+});
+Object.assign(I18N.zh,{
+  gear_title:"裝備與周邊",
+  gear_intro:"我真心推薦的書與練習裝備，以及即將推出的 Roulette Lab 周邊。這裡沒有賭場或博彩公司聯盟行銷——牌照風險我不需要。",
+  gear_h:"書籍與練習裝備",
+  gear_d:"精挑細選。下面每樣都是我會推薦朋友買的——誠實的數學、真實的練習工具。",
+  gear_cta:"去 Amazon 看價格",
+  amz_disc:"身為 Amazon 合作夥伴，Roulette Lab 從合格購買中賺取佣金。價格會變動——連結永遠顯示即時價格。",
+  merch_h:"Roulette Lab 周邊",
+  merch_d:"品牌 T 恤與輪盤小物，按需印製。設計製作中——敬請期待。",
+  merch_soon:"設計即將推出",
+  merch_notify:"想搶先入手？會在下次網站更新時一併公告。",
+});
+function pick(o){ return (LANG==='zh'?o.zh:o.en)||o.en; }
+function renderGear(){
+  document.getElementById('geargrid').innerHTML = GEAR.map(g=>`
+    <div class="card"><div style="font-size:2.2rem">${g.icon}</div>
+      <h3 style="color:var(--gold);margin:8px 0">${pick(g.name)}</h3>
+      <p class="muted">${pick(g.d)}</p>
+      <a class="btn small" href="${amz(g.q)}" target="_blank" rel="nofollow sponsored noopener">${t('gear_cta')} →</a>
+    </div>`).join('');
+  const m = document.getElementById('merchgrid');
+  if(!MERCH_PRODUCTS.length){
+    m.innerHTML = [1,2,3].map(()=>`
+      <div class="card" style="border-style:dashed;text-align:center;opacity:.75">
+        <div style="font-size:2.2rem">👕</div>
+        <h3 style="color:var(--gold)">${t('merch_soon')}</h3>
+        <p class="muted">${t('merch_notify')}</p>
+      </div>`).join('');
+  } else {
+    m.innerHTML = MERCH_PRODUCTS.map(p=>`
+      <div class="card"><img src="${p.img}" alt="" style="width:100%;border-radius:8px">
+        <h3 style="color:var(--gold);margin:8px 0">${pick(p.name)}</h3>
+        <div class="kv"><span>Price</span><b>${p.price}</b></div>
+        <a class="btn small" href="${p.url}" target="_blank" rel="noopener">Buy →</a>
+      </div>`).join('');
+  }
+}
+function onLangChange(){ renderGear(); }
+</script>
+</head>
+<body>
+<script>document.write(navHTML('gear.html'));</script>
+<div class="wrap"><section class="block">
+<h1 style="color:var(--gold)" data-i18n="gear_title">Gear & Merch</h1>
+<p data-i18n="gear_intro"></p>
+<h2 class="sec">🛒 <span data-i18n="gear_h">Books & practice gear</span></h2>
+<p class="muted" data-i18n="gear_d"></p>
+<div class="grid cols3" id="geargrid"></div>
+<p class="ad-note" data-i18n="amz_disc"></p>
+
+<h2 class="sec mt">👕 <span data-i18n="merch_h">Roulette Lab merch</span></h2>
+<p class="muted" data-i18n="merch_d"></p>
+<div class="grid cols3" id="merchgrid"></div>
+
+<script>document.write(disclosure());</script>
+</section></div>
+<script>document.write(adSlot());</script>
+<script>document.write(footerHTML());</script>
+<script>renderGear();</script>
+</body>
+</html>

@@ -20,8 +20,12 @@ Object.assign(I18N.en,{
   spins_hr:"Spins / hour", add_bet:"Add bet", hour_run:"Estimate",
   bet_type:"Bet", per_hour:"Spins / hour",
   hour_cost:"Expected hourly cost",
-  hour_note:"European wheel: 2.70% on all bets, 1.35% on even-money bets with la partage. ~50 spins/hour at a full table.",
+  hour_note:"Single zero: 2.70% on all bets, 1.35% on even-money bets with la partage. Double zero: 5.26%. Triple zero: 7.69%. ~50 spins/hour at a full table.",
   lapartage_short:"la partage",
+  wheel:"Wheel",
+  single_zero:"Single zero (European) — 2.70%",
+  double_zero:"Double zero (American) — 5.26%",
+  triple_zero:"Triple zero — 7.69% ⚠️",
 });
 Object.assign(I18N.zh,{
   calc_title:"計算機",
@@ -35,8 +39,12 @@ Object.assign(I18N.zh,{
   spins_hr:"每小時轉數", add_bet:"新增注碼", hour_run:"估算",
   bet_type:"注種", per_hour:"每小時轉數",
   hour_cost:"預期每小時花費",
-  hour_note:"歐式輪盤：所有注 2.70%，la partage 均等注 1.35%。滿桌約每小時 50 轉。",
+  hour_note:"單零：所有注 2.70%，la partage 均等注 1.35%。雙零：5.26%。三零：7.69%。滿桌約每小時 50 轉。",
   lapartage_short:"la partage",
+  wheel:"輪盤",
+  single_zero:"單零（歐式）——2.70%",
+  double_zero:"雙零（美式）——5.26%",
+  triple_zero:"三零——7.69% ⚠️",
 });
 const BETS = {
   straight:{pay:35, nums:1, en:"Straight up", zh:"單號"},
@@ -47,23 +55,29 @@ const BETS = {
   dozen:{pay:2, nums:12, en:"Dozen / Column", zh:"打數 / 列注"},
   evenmoney:{pay:1, nums:18, en:"Even-money (red/black…)", zh:"均等注（紅黑…）"},
   evenmoney_lp:{pay:1, nums:18, lp:true, en:"Even-money + la partage", zh:"均等注 + la partage"},
+  basket:{pay:6, nums:5, us:true, en:"Basket (0,00,1,2,3) — US only", zh:"籃子注（0,00,1,2,3）——僅美式"},
 };
+const POCKETS = {eu:37, us:38, z3:39};
+const EDGE = {eu:1/37, us:2/38, z3:3/39};
 function betName(k){ const b=BETS[k]; return (LANG==='zh'?b.zh:b.en); }
+function curVariant(){ return document.getElementById('p_var').value; }
 function runPayout(){
+  const v=curVariant(), pk=POCKETS[v], edge=EDGE[v];
   const k=document.getElementById('p_bet').value, amt=+document.getElementById('p_amt').value||10;
   const b=BETS[k];
-  const edge = b.lp ? 0.0135 : 1/37;
-  const prob = b.nums/37;
+  const e = (b.lp && v==='eu') ? 0.0135 : edge;
+  const prob = b.nums/pk;
+  const lpNote = (b.lp && v!=='eu') ? `<div class="callout">${LANG==='zh'?'注意：la partage 只在單零輪盤有效，此處按標準優勢計算。':'Note: la partage only applies on single-zero; standard edge used here.'}</div>` : '';
   document.getElementById('p_out').innerHTML=`
     <div class="stat-grid">
       <div class="stat"><div class="v">$${(amt*b.pay).toFixed(0)}</div><div class="l">${t('pays')} (${b.pay}:1)</div></div>
       <div class="stat"><div class="v">${(prob*100).toFixed(2)}%</div><div class="l">${t('prob_win')}</div></div>
-      <div class="stat"><div class="v neg">${(edge*100).toFixed(2)}%</div><div class="l">${t('edge')}</div></div>
-      <div class="stat"><div class="v neg">$${(amt*edge).toFixed(2)}</div><div class="l">${t('hour_cost')} / spin</div></div>
+      <div class="stat"><div class="v neg">${(e*100).toFixed(2)}%</div><div class="l">${t('edge')}</div></div>
+      <div class="stat"><div class="v neg">$${(amt*e).toFixed(2)}</div><div class="l">${t('hour_cost')} / spin</div></div>
     </div>
     <div class="callout">${LANG==='zh'
-      ? `$${amt} 押${betName(k)}：中了拿 $${(amt*b.pay).toFixed(0)} 利潤（本金退回），機率 ${(prob*100).toFixed(2)}%，每轉平均成本 $${(amt*edge).toFixed(2)}。`
-      : `$${amt} on ${betName(k)}: win $${(amt*b.pay).toFixed(0)} profit (stake back), ${(prob*100).toFixed(2)}% chance, average cost $${(amt*edge).toFixed(2)} per spin.`}</div>`;
+      ? `$${amt} 押${betName(k)}（${pk} 格輪盤）：中了拿 $${(amt*b.pay).toFixed(0)} 利潤（本金退回），機率 ${(prob*100).toFixed(2)}%，每轉平均成本 $${(amt*e).toFixed(2)}。`
+      : `$${amt} on ${betName(k)} (${pk}-pocket wheel): win $${(amt*b.pay).toFixed(0)} profit (stake back), ${(prob*100).toFixed(2)}% chance, average cost $${(amt*e).toFixed(2)} per spin.`}</div>${lpNote}`;
 }
 let hourRows=0;
 function addHourRow(){
@@ -79,13 +93,13 @@ function addHourRow(){
   document.getElementById('hour_rows').appendChild(div);
 }
 function runHour(){
-  const spins=+document.getElementById('h_spins').value||50;
+  const v=curVariant(), spins=+document.getElementById('h_spins').value||50;
   let total=0, detail='';
   for(const row of document.getElementById('hour_rows').children){
     const sel=row.querySelector('select'), amt=row.querySelector('input[type=number]');
     if(!sel||!amt) continue;
     const b=BETS[sel.value], a=+amt.value||0;
-    const edge=b.lp?0.0135:1/37;
+    const edge=(b.lp&&v==='eu')?0.0135:EDGE[v];
     const cost=a*edge*spins;
     total+=cost;
     detail+=`<div class="kv"><span>${betName(sel.value)} $${a}</span><b class="neg">-$${cost.toFixed(2)}/hr</b></div>`;
@@ -109,6 +123,11 @@ function onLangChange(){
   <h2 class="sec" data-i18n="pay_h">Payout Calculator</h2>
   <p data-i18n="pay_d"></p>
   <div class="rowflex">
+    <label class="f"><span data-i18n="wheel">Wheel</span><br><select id="p_var">
+      <option value="eu" data-i18n="single_zero">Single zero (European) — 2.70%</option>
+      <option value="us" data-i18n="double_zero">Double zero (American) — 5.26%</option>
+      <option value="z3" data-i18n="triple_zero">Triple zero — 7.69% ⚠️</option>
+    </select></label>
     <label class="f"><span data-i18n="bet">Bet</span><br><select id="p_bet"></select></label>
     <label class="f"><span data-i18n="amount">Amount $</span><br><input type="number" id="p_amt" value="10" style="width:110px"></label>
     <button class="btn" onclick="runPayout()" data-i18n="calc">Calculate</button>

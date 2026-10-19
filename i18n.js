@@ -19,6 +19,8 @@ en:{
   house_ad_text:"🎲 Labs hub — craps, baccarat & roulette",
   disclosure:"Roulette Lab is a free educational simulator. No real money is wagered here. Every bet on a European wheel loses 2.70% in the long run (1.35% on even-money bets with la partage) — the math is shown honestly so you can see it for yourself.",
   footer_by:"Built for players who want the truth about the math.",
+  nl_title:"\U0001F4EC iamthecasino.com \u2014 the letter",
+  nl_desc:"Weekly: one options trade idea with the math, one casino truth, one comp-cruise deal. Free forever. Unsubscribe anytime.",
   footer_labs:"More from the Labs: ",
   start:"Start", stop:"Stop", reset:"Reset",
 },
@@ -39,6 +41,8 @@ zh:{
   house_ad_text:"🎲 Labs 總覽——花旗骰、百家樂與輪盤",
   disclosure:"Roulette Lab 是免費教育模擬器，不涉及真錢投注。歐式輪盤每種注長期輸 2.70%（均等注在 la partage 規則下為 1.35%）——數學誠實呈現，讓你自己看見。",
   footer_by:"為想看清數學真相的玩家而建。",
+  nl_title:"\U0001F4EC 成為莊家——電子報",
+  nl_desc:"每週：一筆附數學的交易想法、一個賭場真相、一個郵輪優惠。永久免費，隨時退訂。",
   footer_labs:"Labs 系列：",
   start:"開始", stop:"停止", reset:"重設",
 }};
@@ -72,8 +76,15 @@ function navHTML(active){
     <button class="langbtn" id="langbtn" onclick="setLang(LANG==='zh'?'en':'zh')">${LANG==='zh'?'EN':'中'}</button>
   </nav></header>`;
 }
+function newsletterHTML(){
+  return `<div class="wrap"><section class="block" style="margin-bottom:8px"><div class="card" style="text-align:center;border:1px solid var(--gold)">
+    <h3 style="color:var(--gold);margin-top:0">${t('nl_title')}</h3>
+    <p class="muted">${t('nl_desc')}</p>
+    <div style="max-width:480px;margin:0 auto"><iframe src="https://iamthecasinocombethehouse.substack.com/embed" width="480" height="320" style="border:1px solid #EEE;background:#fff;max-width:100%;border-radius:8px" frameborder="0" scrolling="no" title="Subscribe"></iframe></div>
+  </div></section></div>`;
+}
 function footerHTML(){
-  return `<footer class="site"><div class="wrap">
+  return newsletterHTML()+`<footer class="site"><div class="wrap">
     <p>${t('footer_labs')}<a href="https://hedgewizs.github.io/thecasinocruiser/labs.html">🎲 Labs hub</a> · <a href="https://hedgewizs.github.io/craps-lab/">Craps Lab</a> · <a href="https://hedgewizs.github.io/baccarat-lab/">Baccarat Lab</a></p>
     <p data-i18n="footer_by">${t('footer_by')}</p>
     <p class="muted" style="font-size:.78rem">Roulette Lab · ${t('disclosure')}</p>
